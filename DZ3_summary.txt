@@ -1,0 +1,11 @@
+1. Добавлены ORM модели:
+   - models_orm/user_orm.py
+   - models_orm/ml_model_orm.py
+   - models_orm/task_orm.py
+   - models_orm/transaction_orm.py
+
+2. Добавлен init_db.py для инициализации базы данных
+3. Добавлен test_db.py для тестирования CRUD операций
+4. Исправлен docker-compose.yml и подключение сервисов
+5. Обновлены requirements.txt и service/*.py для CRUD и работы с БД
+6. Все изменения подготовлены для проверки ДЗ3
