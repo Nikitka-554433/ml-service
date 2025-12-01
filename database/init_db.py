@@ -1,30 +1,40 @@
 from database.database import Base, engine
-from models_orm import user_orm, ml_model_orm, task_orm, transaction_orm
-from services.user_service import create_user
-from services.task_service import create_task
-
 from sqlalchemy.orm import Session
+
+from models_orm.user_orm import UserORM, UserRole
+from models_orm.ml_model_orm import MLModelORM
+from passlib.hash import bcrypt
 
 print("Creating tables...")
 Base.metadata.create_all(bind=engine)
 
-# Инициализация демо-данных
 session = Session(bind=engine)
 
 # Пользователи
-admin = create_user("admin", "admin@example.com", balance=1000.0, role="admin")
-user1 = create_user("user1", "user1@example.com", balance=200.0)
-user2 = create_user("user2", "user2@example.com", balance=50.0)
+admin = UserORM(
+    username="admin",
+    email="admin@example.com",
+    password_hash=bcrypt.hash("adminpass"),
+    balance=1000.0,
+    role=UserRole.admin
+)
+
+demo = UserORM(
+    username="demo",
+    email="demo@example.com",
+    password_hash=bcrypt.hash("demo123"),
+    balance=200.0,
+    role=UserRole.user
+)
+
+session.add(admin)
+session.add(demo)
 
 # ML-модели
-from models_orm.ml_model_orm import MLModelORM
+sentiment = MLModelORM(model_name="sentiment", cost_per_request=2.0)
+toxicity = MLModelORM(model_name="toxicity", cost_per_request=1.5)
 
-sentiment_model = MLModelORM(model_name="sentiment", cost_per_request=2.0)
-toxicity_model = MLModelORM(model_name="toxicity", cost_per_request=1.5)
-
-session.add_all([sentiment_model, toxicity_model])
+session.add_all([sentiment, toxicity])
 session.commit()
+session.close()
 
-# Простейшие задачи анализа
-create_task(user1.user_id, sentiment_model.model_id, "This is a test text")
-create_task(user2.user_id, toxicity_model.model_id, "This is another test")
