@@ -6,3 +6,7 @@ __pycache__/
 .vscode/
 .idea/
 *.log
+venv/
+__pycache__/
+*.pyc
+.env
