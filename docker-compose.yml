@@ -28,11 +28,6 @@ services:
       - "5432:5432"
     networks:
       - ml_net
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d mydb"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
 
   rabbitmq:
     image: rabbitmq:management
@@ -44,6 +39,30 @@ services:
       - ml_net
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+
+  worker1:
+    build: .
+    container_name: worker1
+    command: python worker/worker.py
+    depends_on:
+      - rabbitmq
+      - database
+    volumes:
+      - .:/app
+    networks:
+      - ml_net
+
+  worker2:
+    build: .
+    container_name: worker2
+    command: python worker/worker.py
+    depends_on:
+      - rabbitmq
+      - database
+    volumes:
+      - .:/app
+    networks:
+      - ml_net
 
   web-proxy:
     image: nginx:latest
@@ -63,3 +82,4 @@ volumes:
 
 networks:
   ml_net:
+
