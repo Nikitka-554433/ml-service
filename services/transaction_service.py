@@ -1,15 +1,12 @@
-from database.database import SessionLocal
-from models_orm.transaction_orm import TransactionORM
-from datetime import datetime
+from sqlalchemy.orm import Session
+from models_orm.transaction_orm import TransactionORM, TransactionType
 
-db = SessionLocal()
-
-def create_transaction(user_id, amount, t_type):
-    tx = TransactionORM(user_id=user_id, amount=amount, type=t_type, timestamp=datetime.utcnow())
+def create_transaction(db: Session, user_id: int, amount: float, tx_type: TransactionType):
+    tx = TransactionORM(user_id=user_id, amount=amount, type=tx_type)
     db.add(tx)
     db.commit()
     db.refresh(tx)
     return tx
 
-def get_transactions(user_id):
+def get_user_transactions(db: Session, user_id: int):
     return db.query(TransactionORM).filter(TransactionORM.user_id == user_id).all()
