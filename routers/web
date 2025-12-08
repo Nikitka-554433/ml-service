@@ -1,0 +1,87 @@
+from fastapi import APIRouter, Request, Form, Depends, HTTPException
+from fastapi.responses import RedirectResponse
+from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
+from starlette.status import HTTP_302_FOUND
+
+from database.database import get_db
+from services.user_service import create_user, get_user_by_username
+from services.task_service import get_user_tasks
+from services.transaction_service import get_user_transactions
+from models_orm.user_orm import UserRole
+from passlib.hash import bcrypt
+
+router = APIRouter()
+templates = Jinja2Templates(directory="templates")
+
+# Вспомогательная функция авторизации
+def authenticate_user(db: Session, username: str, password: str):
+    user = get_user_by_username(db, username)
+    if user and bcrypt.verify(password, user.password_hash):
+        return user
+    return None
+
+# Регистрация пользователя
+
+@router.get("/register")
+def register_form(request: Request):
+    return templates.TemplateResponse("register.html", {"request": request})
+
+@router.post("/register")
+def register_user(request: Request, username: str = Form(...), email: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+    existing_user = get_user_by_username(db, username)
+    if existing_user:
+        return templates.TemplateResponse("register.html", {"request": request, "error": "Пользователь уже существует"})
+    
+    create_user(db, username=username, email=email, password=password)
+    return RedirectResponse("/login", status_code=HTTP_302_FOUND)
+
+# Логин пользователя
+
+@router.get("/login")
+def login_form(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
+@router.post("/login")
+def login_user(request: Request, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+    user = authenticate_user(db, username, password)
+    if not user:
+        return templates.TemplateResponse("login.html", {"request": request, "error": "Неверный логин или пароль"})
+    
+    response = RedirectResponse("/dashboard", status_code=HTTP_302_FOUND)
+    response.set_cookie(key="user_id", value=str(user.user_id))
+    return response
+
+
+# Дашборд
+@router.get("/dashboard")
+def dashboard(request: Request, db: Session = Depends(get_db)):
+    user_id = request.cookies.get("user_id")
+    if not user_id:
+        return RedirectResponse("/login", status_code=HTTP_302_FOUND)
+    
+    user_tasks = get_user_tasks(db, int(user_id))
+    return templates.TemplateResponse("dashboard.html", {"request": request, "tasks": user_tasks})
+
+
+# Просмотр задач
+@router.get("/tasks")
+def tasks_page(request: Request, db: Session = Depends(get_db)):
+    user_id = request.cookies.get("user_id")
+    if not user_id:
+        return RedirectResponse("/login", status_code=HTTP_302_FOUND)
+    
+    tasks = get_user_tasks(db, int(user_id))
+    return templates.TemplateResponse("tasks.html", {"request": request, "tasks": tasks})
+
+# Просмотр баланса и транзакций
+@router.get("/balance")
+def balance_page(request: Request, db: Session = Depends(get_db)):
+    user_id = request.cookies.get("user_id")
+    if not user_id:
+        return RedirectResponse("/login", status_code=HTTP_302_FOUND)
+    
+    from services.transaction_service import get_user_transactions
+    transactions = get_user_transactions(db, int(user_id))
+    return templates.TemplateResponse("balance.html", {"request": request, "transactions": transactions})
+
