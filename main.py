@@ -10,6 +10,7 @@ from database.database import get_db
 from services.user_service import get_user_by_username
 from services.task_service import get_user_tasks
 from services.transaction_service import get_user_transactions
+from routers import web
 
 app = FastAPI(title="ML Service API")
 
@@ -18,6 +19,8 @@ app.include_router(tasks.router)
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(transactions.router)
+app.include_router(web.router)
+
 
 # Роутер веб-интерфейса
 app.include_router(web.router)
