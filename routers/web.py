@@ -6,6 +6,10 @@ from database.database import get_db
 from services.task_service import get_user_tasks
 from fastapi.responses import RedirectResponse
 from jose import jwt, JWTError
+from services.balance_service import deposit
+from services.transaction_service import get_user_transactions
+from services.task_service import create_task
+from services.balance_service import charge_for_task
 
 templates = Jinja2Templates(directory="templates")
 router = APIRouter()
@@ -68,5 +72,53 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
     tasks_list = get_user_tasks(db, user.user_id)
     return templates.TemplateResponse("dashboard.html", {"request": request, "user": user, "tasks": tasks_list})
 
+# Пополнение
+@router.post("/deposit")
+def deposit_money(request: Request, amount: float = Form(...), db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse("/login")
+
+    deposit(db, user.user_id, amount)
+    return RedirectResponse("/dashboard")
+
+# Создание задачи через WEB
+@router.get("/create_task")
+def create_task_page(request: Request):
+    return templates.TemplateResponse("create_task.html", {"request": request})
+
+@router.post("/create_task")
+def create_task_web(
+    request: Request,
+    db: Session = Depends(get_db),
+    model_id: int = Form(...),
+    text: str = Form(...)
+):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse("/login")
+
+    price = max(1, len(text) * 0.01)  
+    if not charge_for_task(db, user.user_id, price):
+        return templates.TemplateResponse("create_task.html", {
+            "request": request,
+            "error": "Недостаточно средств!"
+        })
+
+    task = create_task(db, user.user_id, model_id, text)
+    return RedirectResponse("/dashboard")
+
+# История транзакций
+@router.get("/transactions")
+def view_transactions(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse("/login")
+
+    txs = get_user_transactions(db, user.user_id)
+    return templates.TemplateResponse("transactions.html", {
+        "request": request,
+        "transactions": txs
+    })
 
 
