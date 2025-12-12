@@ -1,0 +1,21 @@
+<!-- templates/dashboard.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Панель пользователя</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <h1>Добро пожаловать, {{ user.username }}</h1>
+    <p>Баланс: {{ user.balance }}</p>
+    
+    <h2>Задачи</h2>
+    <a href="/create_task">Создать новую задачу</a>
+    <ul>
+        {% for task in tasks %}
+            <li>{{ task.text }} - Статус: {{ task.status.value }}</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
+
