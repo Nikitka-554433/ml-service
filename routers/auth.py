@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from services.user_service import get_user_by_username
 from database.database import get_db
 from passlib.hash import bcrypt
-import jwt
+from jose import jwt
 import datetime
 
 SECRET_KEY = "supersecretkey"
