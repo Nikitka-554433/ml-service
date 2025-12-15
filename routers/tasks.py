@@ -1,33 +1,24 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database.database import get_db
 from schemas.task import TaskCreate, TaskRead
-from services.task_service import create_task
-import json
-import pika
+from services.task_service import create_task_and_predict
 
 router = APIRouter()
 
-RABBITMQ_HOST = "rabbitmq"
-QUEUE_NAME = "task_queue"
-
 @router.post("/create", response_model=TaskRead)
-def create_task_endpoint(task: TaskCreate, db: Session = Depends(get_db)):
-    db_task = create_task(db, task)
-    
-    # Отправляем задачу в RabbitMQ
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
-    channel = connection.channel()
-    channel.queue_declare(queue=QUEUE_NAME, durable=True)
-    channel.basic_publish(
-        exchange="",
-        routing_key=QUEUE_NAME,
-        body=json.dumps({"task_id": db_task.task_id, "text": task.text}),
-        properties=pika.BasicProperties(delivery_mode=2)
-    )
-    connection.close()
+def create_task_endpoint(
+    task: TaskCreate,
+    db: Session = Depends(get_db)
+):
+    try:
 
-    return db_task
-
-
+        return create_task_and_predict(
+            db=db,
+            user_id=1,
+            model_id=task.model_id,
+            text=task.text
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 

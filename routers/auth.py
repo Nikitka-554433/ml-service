@@ -21,4 +21,5 @@ def login(auth: AuthRequest, db: Session = Depends(get_db)):
         "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=1)
     }
     token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
-    return AuthResponse(access_token=token)
+    return AuthResponse(access_token=token, token_type="bearer")
+

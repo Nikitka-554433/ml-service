@@ -9,13 +9,12 @@ SECRET_KEY = "supersecretkey"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
-def get_user_by_username(username: str):
+def get_user_by_username(db: Session, username: str):
     """
     Получает пользователя из базы по username
     """
-    db: Session = get_db()
-    user = db.query(User).filter(User.username == username).first()
-    return user
+    #db: Session = get_db()
+    return db.query(UserORM).filter(UserORM.username == username).first()
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """

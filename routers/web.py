@@ -8,8 +8,9 @@ from fastapi.responses import RedirectResponse
 from jose import jwt, JWTError
 from services.balance_service import deposit
 from services.transaction_service import get_user_transactions
-from services.task_service import create_task
+from services.task_service import create_task_and_predict
 from services.balance_service import charge_for_task
+from models_orm.user_orm import UserORM
 
 templates = Jinja2Templates(directory="templates")
 router = APIRouter()
@@ -17,18 +18,14 @@ router = APIRouter()
 SECRET_KEY = "supersecretkey"
 ALGORITHM = "HS256"
 
-# Helper: get current user from JWT cookie
-def get_current_user(request: Request, db: Session):
+def get_current_user_dep(request: Request, db: Session = Depends(get_db)):
     token = request.cookies.get("access_token")
     if not token:
         return None
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username = payload.get("sub")
-        if username is None:
-            return None
-        user = get_user_by_username(db, username=username)
-        return user
+        user_id = payload.get("sub")
+        return db.query(UserORM).filter(UserORM.user_id == user_id).first()
     except JWTError:
         return None
 
@@ -53,7 +50,7 @@ def login_user(request: Request, response: Response, username: str = Form(...), 
     user = get_user_by_username(db, username)
     if not user or not verify_password(password, user.password_hash):
         return templates.TemplateResponse("login.html", {"request": request, "error": "Неверный логин или пароль"})
-    token = create_access_token({"sub": user.username})
+    token = create_access_token({"sub": user.user_id})
     response = RedirectResponse("/dashboard", status_code=302)
     response.set_cookie(key="access_token", value=token, httponly=True)
     return response
@@ -105,7 +102,12 @@ def create_task_web(
             "error": "Недостаточно средств!"
         })
 
-    task = create_task(db, user.user_id, model_id, text)
+    task = create_task_and_predict(
+    db=db,
+    user_id=user.user_id,
+    model_id=model_id,
+    text=text
+)
     return RedirectResponse("/dashboard")
 
 # История транзакций

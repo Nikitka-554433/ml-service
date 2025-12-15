@@ -1,33 +1,24 @@
-import time
+# worker.py
 import json
 import pika
 from sqlalchemy.orm import Session
 from database.database import SessionLocal
-from services.task_service import update_task_result, get_task_by_id
-from models.ml_model import MLModel
+from services.task_service import create_prediction
 
-# Подключение к RabbitMQ
 RABBITMQ_HOST = "rabbitmq"
 QUEUE_NAME = "task_queue"
 
-ml_model = MLModel()  # глобальный экземпляр модели
-
 def process_task(ch, method, properties, body):
     task_data = json.loads(body)
-    task_id = task_data["task_id"]
-    text = task_data["text"]
+    print(f"[Worker] Processing task {task_data['task_id']}")
 
-    print(f"[Worker] Processing task {task_id}")
-
-    result = ml_model.predict(text)
-
-    # Сохраняем результат в БД
+    # Работа с БД
     db: Session = SessionLocal()
-    update_task_result(db, task_id, result)
+    create_prediction(db, task_data)
     db.close()
 
     ch.basic_ack(delivery_tag=method.delivery_tag)
-    print(f"[Worker] Task {task_id} done")
+    print(f"[Worker] Task {task_data['task_id']} done")
 
 def main():
     connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
@@ -40,5 +31,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 

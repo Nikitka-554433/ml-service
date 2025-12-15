@@ -1,10 +1,15 @@
 class MLModel:
     def __init__(self):
-        # Инициализация модели
         print("[MLModel] Model initialized")
 
     def predict(self, text: str):
-        # Здесь логика предсказания
-        result = {"length": len(text), "words": len(text.split())}
-        return result
+        """
+        Простейшее предсказание-заглушка.
+        """
+        return {
+            "length": len(text),
+            "words": len(text.split()),
+            "label": "positive" if len(text) % 2 == 0 else "negative"
+        }
+
 
