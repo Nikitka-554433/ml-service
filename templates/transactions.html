@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>История транзакций</title>
+</head>
+<body>
+<h1>История транзакций</h1>
+
+<ul>
+    {% for tx in transactions %}
+        <li>
+            {{ tx.type.value }}: {{ tx.amount }}
+        </li>
+    {% endfor %}
+</ul>
+
+<a href="/dashboard">Назад</a>
+</body>
+</html>

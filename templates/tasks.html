@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Мои задачи</title>
+</head>
+<body>
+<h1>Ваши задачи</h1>
+
+<ul>
+    {% for task in tasks %}
+        <li>
+            <b>ID:</b> {{ task.task_id }} |
+            <b>Статус:</b> {{ task.status.value }} |
+            <b>Текст:</b> {{ task.text }}
+        </li>
+    {% endfor %}
+</ul>
+
+<a href="/dashboard">Назад</a>
+</body>
+</html>
