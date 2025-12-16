@@ -1,0 +1,83 @@
+from fastapi import APIRouter, Request, Form, Depends, Response
+from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
+from services.user_service import create_user, get_user_by_username, verify_password, create_access_token
+from database.database import get_db
+from services.task_service import get_user_tasks
+from fastapi.responses import RedirectResponse
+from jose import jwt, JWTError
+from routers.tasks import publish_task_message, create_task
+from fastapi import APIRouter, Form, Depends
+
+templates = Jinja2Templates(directory="templates")
+router = APIRouter()
+
+SECRET_KEY = "supersecretkey"
+ALGORITHM = "HS256"
+
+# Helper: get current user from JWT cookie
+def get_current_user(request: Request, db: Session):
+    token = request.cookies.get("access_token")
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if username is None:
+            return None
+        user = get_user_by_username(db, username=username)
+        return user
+    except JWTError:
+        return None
+
+@router.get("/register")
+def register_page(request: Request):
+    return templates.TemplateResponse("register.html", {"request": request})
+
+@router.post("/register")
+def register_user(request: Request, username: str = Form(...), email: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+    if get_user_by_username(db, username):
+        return templates.TemplateResponse("register.html", {"request": request, "error": "Пользователь уже существует"})
+    user = create_user(db, username, email, password)
+    response = RedirectResponse("/login", status_code=302)
+    return response
+
+@router.get("/login")
+def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
+@router.post("/login")
+def login_user(request: Request, response: Response, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+    user = get_user_by_username(db, username)
+    if not user or not verify_password(password, user.password_hash):
+        return templates.TemplateResponse("login.html", {"request": request, "error": "Неверный логин или пароль"})
+    token = create_access_token({"sub": user.username})
+    response = RedirectResponse("/dashboard", status_code=302)
+    response.set_cookie(key="access_token", value=token, httponly=True)
+    return response
+
+@router.get("/logout")
+def logout_user():
+    response = RedirectResponse("/login", status_code=302)
+    response.delete_cookie("access_token")
+    return response
+
+@router.get("/dashboard")
+def dashboard(request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse("/login")
+    tasks_list = get_user_tasks(db, user.user_id)
+    return templates.TemplateResponse("dashboard.html", {"request": request, "user": user, "tasks": tasks_list})
+
+router = APIRouter()
+
+@router.post("/create_task")
+def web_create_task(text: str = Form(...), model_id: int = Form(...), db: Session = Depends(get_db), user_id: int = 1):
+    # Создаём задачу в базе
+    task = create_task(db, user_id=user_id, model_id=model_id, text=text)
+    # Отправляем в очередь RabbitMQ
+    publish_task_message(task.task_id, task.text, task.model_id, task.user_id)
+    return {"status": "task_created", "task_id": task.task_id}
+
+

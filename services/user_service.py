@@ -1,20 +1,18 @@
-from sqlalchemy.orm import Session
-from models_orm.user_orm import UserORM, UserRole
+from datetime import datetime, timedelta
+from jose import jwt
 from passlib.hash import bcrypt
 
-def create_user(db: Session, username: str, email: str, password: str, role=UserRole.user):
-    hashed = bcrypt.hash(password)
-    user = UserORM(username=username, email=email, password_hash=hashed, role=role)
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return user
+SECRET_KEY = "supersecretkey"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
-def get_user(db: Session, user_id: int):
-    return db.query(UserORM).filter(UserORM.user_id == user_id).first()
+def verify_password(plain_password, hashed_password):
+    return bcrypt.verify(plain_password, hashed_password)
 
-def get_user_by_username(db: Session, username: str):
-    return db.query(UserORM).filter(UserORM.username == username).first()
+def create_access_token(data: dict, expires_delta: timedelta = None):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
 
-def list_users(db: Session):
-    return db.query(UserORM).all()
