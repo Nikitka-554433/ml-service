@@ -41,7 +41,9 @@ services:
       - rabbitmq_data:/var/lib/rabbitmq
 
   worker1:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
     container_name: worker1
     command: python worker/worker.py
     depends_on:
@@ -53,7 +55,9 @@ services:
       - ml_net
 
   worker2:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
     container_name: worker2
     command: python worker/worker.py
     depends_on:
@@ -76,10 +80,4 @@ services:
     networks:
       - ml_net
 
-volumes:
-  postgres_data:
-  rabbitmq_data:
-
-networks:
-  ml_net:
 

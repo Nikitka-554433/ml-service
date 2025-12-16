@@ -6,6 +6,8 @@ from database.database import get_db
 from services.task_service import get_user_tasks
 from fastapi.responses import RedirectResponse
 from jose import jwt, JWTError
+from routers.tasks import publish_task_message, create_task
+from fastapi import APIRouter, Form, Depends
 
 templates = Jinja2Templates(directory="templates")
 router = APIRouter()
@@ -68,5 +70,14 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
     tasks_list = get_user_tasks(db, user.user_id)
     return templates.TemplateResponse("dashboard.html", {"request": request, "user": user, "tasks": tasks_list})
 
+router = APIRouter()
+
+@router.post("/create_task")
+def web_create_task(text: str = Form(...), model_id: int = Form(...), db: Session = Depends(get_db), user_id: int = 1):
+    # Создаём задачу в базе
+    task = create_task(db, user_id=user_id, model_id=model_id, text=text)
+    # Отправляем в очередь RabbitMQ
+    publish_task_message(task.task_id, task.text, task.model_id, task.user_id)
+    return {"status": "task_created", "task_id": task.task_id}
 
 

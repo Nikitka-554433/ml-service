@@ -5,16 +5,15 @@ from sqlalchemy.orm import Session
 from database.database import SessionLocal
 from services.task_service import update_task_status
 from models_orm.task_orm import TaskStatus
+from models.ml_model import TextAnalyzerModel
 
 
 RABBITMQ_HOST = "rabbitmq"
 QUEUE_NAME = "ml_tasks"
 
-
 def simulate_prediction(text: str):
-    time.sleep(2)
-    return {"length": len(text), "sentiment": "positive"}
-
+    model = TextAnalyzerModel(model_name="text_analyzer", cost_per_request=0)
+    return model.analyze(text)
 
 def process_task(ch, method, properties, body):
     print(" [*] Received", body)
